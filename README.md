@@ -2,17 +2,6 @@
 
 Novel Helper is an Android app to help writers manage their novel documents with version control integration.
 
-## Modules
-
-- **app**: Main application module
-- **feature:document-editor**: Document editing screen
-- **feature:document-selection**: Document selection/home screen
-- **core:model**: Domain models
-- **core:data**: Repositories and data sources
-- **core:ui**: Common UI components
-- **core:database**: Room database and DAOs
-- **core:network**: Network and cloud sync
-
 ## Directory Structure
 ```
 NovelHelper
