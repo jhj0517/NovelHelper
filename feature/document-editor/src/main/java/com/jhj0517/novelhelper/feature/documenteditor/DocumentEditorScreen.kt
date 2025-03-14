@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -38,6 +39,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -108,7 +110,7 @@ fun DocumentEditorScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -406,7 +408,6 @@ private fun BranchSelector(
             expanded = showSelector,
             onDismissRequest = onToggleSelector
         ) {
-            // TODO: Get branches from repository and show them here
             // For now, just show a placeholder
             DropdownMenuItem(
                 text = { Text("Main Branch") },
@@ -415,8 +416,8 @@ private fun BranchSelector(
                     onToggleSelector()
                 }
             )
-            
-            Divider()
+
+            HorizontalDivider()
             
             DropdownMenuItem(
                 text = { Text("Create New Branch") },
