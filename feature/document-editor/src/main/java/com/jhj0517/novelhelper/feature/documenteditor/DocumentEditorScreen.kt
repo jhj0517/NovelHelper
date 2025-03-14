@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
@@ -142,19 +143,19 @@ fun DocumentEditorScreen(
                     )
                     
                     // Sync button
-                    IconButton(
-                        onClick = { viewModel.handleAction(DocumentEditorAction.SyncToCloud) },
-                        enabled = !uiState.isSyncing
-                    ) {
-                        if (uiState.isSyncing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(Icons.Default.Face, contentDescription = "Sync to Cloud")
-                        }
-                    }
+//                    IconButton(
+//                        onClick = { viewModel.handleAction(DocumentEditorAction.SyncToCloud) },
+//                        enabled = !uiState.isSyncing
+//                    ) {
+//                        if (uiState.isSyncing) {
+//                            CircularProgressIndicator(
+//                                modifier = Modifier.size(24.dp),
+//                                strokeWidth = 2.dp
+//                            )
+//                        } else {
+//                            Icon(Icons.Default.U, contentDescription = "Sync to Cloud")
+//                        }
+//                    }
                 }
             )
         },
@@ -309,7 +310,7 @@ private fun DocumentContent(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Icon(Icons.Default.Face, contentDescription = "Save")
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Save")
                 }
                 Spacer(modifier = Modifier.size(4.dp))
                 Text("Save")
