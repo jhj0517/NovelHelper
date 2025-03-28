@@ -1,18 +1,23 @@
 package com.jhj0517.novelhelper.feature.documentselection
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -20,6 +25,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -48,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jhj0517.novelhelper.core.model.Document
+import kotlin.math.absoluteValue
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -183,17 +190,19 @@ private fun DocumentList(
     documents: List<Document>,
     onDocumentSelected: (String) -> Unit
 ) {
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 160.dp),
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(documents) { document ->
             DocumentItem(
                 document = document,
                 onDocumentSelected = onDocumentSelected
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -205,38 +214,109 @@ private fun DocumentItem(
 ) {
     val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
     
-    Card(
+    // Generate a deterministic color based on document ID
+    val coverColors = listOf(
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.secondaryContainer,
+        MaterialTheme.colorScheme.tertiaryContainer,
+        MaterialTheme.colorScheme.surfaceVariant,
+        MaterialTheme.colorScheme.inverseSurface
+    )
+    val colorIndex = document.id.hashCode().absoluteValue % coverColors.size
+    val coverColor = coverColors[colorIndex]
+    val textColor = when(colorIndex) {
+        4 -> MaterialTheme.colorScheme.inverseOnSurface  // For inverseSurface background
+        else -> MaterialTheme.colorScheme.onPrimaryContainer
+    }
+    
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onDocumentSelected(document.id) }
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        // Book cover with spine effect
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.8f)
+                .clickable { onDocumentSelected(document.id) }
         ) {
-            Text(
-                text = document.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+            // Book spine (left edge)
+            Box(
+                modifier = Modifier
+                    .width(8.dp)
+                    .fillMaxSize()
+                    .background(
+                        color = coverColor.copy(alpha = 0.7f),
+                        shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)
+                    )
             )
             
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = "Last updated: ${document.updatedAt.format(dateFormatter)}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            
-            if (document.synopsis.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = document.synopsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+            // Main book cover
+            Card(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 4.dp),  // Offset to show the spine
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = coverColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        // Book title (center on cover)
+                        Text(
+                            text = document.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = textColor
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        // Small preview of synopsis if available
+                        if (document.synopsis.isNotBlank()) {
+                            Text(
+                                text = document.synopsis,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                color = textColor
+                            )
+                        }
+                    }
+                }
             }
         }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Document title below cover
+        Text(
+            text = document.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        
+        // Last updated date
+        Text(
+            text = "Updated: ${document.updatedAt.format(dateFormatter)}",
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
