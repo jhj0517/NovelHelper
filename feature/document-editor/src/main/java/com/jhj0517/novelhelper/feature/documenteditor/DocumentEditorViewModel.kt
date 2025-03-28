@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jhj0517.novelhelper.core.data.repository.DocumentRepository
 import com.jhj0517.novelhelper.core.data.repository.DocumentSyncRepository
-import com.jhj0517.novelhelper.core.model.Section
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,15 +30,9 @@ class DocumentEditorViewModel @Inject constructor(
             is DocumentEditorAction.UpdateContent -> updateContent(action.content)
             is DocumentEditorAction.SaveVersion -> saveVersion(action.title, action.content)
             is DocumentEditorAction.CreateBranch -> createBranch(action.name, action.fromVersionId)
-            is DocumentEditorAction.AddSection -> addSection(action.title, action.content)
-            is DocumentEditorAction.UpdateSection -> updateSection(action.sectionId, action.title, action.content)
-            is DocumentEditorAction.DeleteSection -> deleteSection(action.sectionId)
-            is DocumentEditorAction.ReorderSections -> reorderSections(action.sectionIds)
             is DocumentEditorAction.SyncToCloud -> syncToCloud()
             is DocumentEditorAction.ToggleBranchSelector -> toggleBranchSelector()
             is DocumentEditorAction.ToggleVersionSelector -> toggleVersionSelector()
-            is DocumentEditorAction.ToggleSectionEditor -> toggleSectionEditor()
-            is DocumentEditorAction.SelectSection -> selectSection(action.sectionId)
         }
     }
 
@@ -87,24 +80,19 @@ class DocumentEditorViewModel @Inject constructor(
                     // Get the latest version
                     val latestVersion = documentRepository.getLatestVersionForBranch(branchId)
                     if (latestVersion != null) {
-                        // Get sections for this version
-                        documentRepository.getSectionsByVersionIdFlow(latestVersion.id).collectLatest { sections ->
-                            _uiState.update { 
-                                it.copy(
-                                    currentBranch = branch,
-                                    currentVersion = latestVersion,
-                                    sections = sections,
-                                    isLoading = false,
-                                    showBranchSelector = false
-                                )
-                            }
+                        _uiState.update { 
+                            it.copy(
+                                currentBranch = branch,
+                                currentVersion = latestVersion,
+                                isLoading = false,
+                                showBranchSelector = false
+                            )
                         }
                     } else {
                         _uiState.update { 
                             it.copy(
                                 currentBranch = branch,
                                 currentVersion = null,
-                                sections = emptyList(),
                                 isLoading = false,
                                 showBranchSelector = false
                             )
@@ -126,16 +114,12 @@ class DocumentEditorViewModel @Inject constructor(
             try {
                 val version = documentRepository.getVersionById(versionId)
                 if (version != null) {
-                    // Get sections for this version
-                    documentRepository.getSectionsByVersionIdFlow(versionId).collectLatest { sections ->
-                        _uiState.update { 
-                            it.copy(
-                                currentVersion = version,
-                                sections = sections,
-                                isLoading = false,
-                                showVersionSelector = false
-                            )
-                        }
+                    _uiState.update { 
+                        it.copy(
+                            currentVersion = version,
+                            isLoading = false,
+                            showVersionSelector = false
+                        )
                     }
                 } else {
                     _uiState.update { it.copy(error = "Version not found", isLoading = false) }
@@ -223,80 +207,6 @@ class DocumentEditorViewModel @Inject constructor(
         }
     }
 
-    private fun addSection(title: String, content: String) {
-        val currentVersion = _uiState.value.currentVersion ?: return
-        val sections = _uiState.value.sections
-        
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            try {
-                // Add section at the end
-                val order = if (sections.isEmpty()) 0 else sections.maxOf { it.order } + 1
-                documentRepository.createSection(currentVersion.id, title, content, order)
-                
-                // Sections will be updated automatically via Flow
-                _uiState.update { it.copy(isLoading = false, showSectionEditor = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
-            }
-        }
-    }
-
-    private fun updateSection(sectionId: String, title: String, content: String) {
-        val section = _uiState.value.sections.find { it.id == sectionId } ?: return
-        
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            try {
-                documentRepository.updateSection(sectionId, title, content, section.order)
-                
-                // Sections will be updated automatically via Flow
-                _uiState.update { it.copy(isLoading = false, showSectionEditor = false, selectedSectionId = null) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
-            }
-        }
-    }
-
-    private fun deleteSection(sectionId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            try {
-                documentRepository.deleteSection(sectionId)
-                
-                // Sections will be updated automatically via Flow
-                _uiState.update { it.copy(isLoading = false, selectedSectionId = null) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
-            }
-        }
-    }
-
-    private fun reorderSections(sectionIds: List<String>) {
-        val sections = _uiState.value.sections
-        if (sections.isEmpty()) return
-        
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            try {
-                // Update order for each section
-                sectionIds.forEachIndexed { index, sectionId ->
-                    val section = sections.find { it.id == sectionId } ?: return@forEachIndexed
-                    documentRepository.updateSection(sectionId, section.title, section.content, index)
-                }
-                
-                // Sections will be updated automatically via Flow
-                _uiState.update { it.copy(isLoading = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
-            }
-        }
-    }
-
     private fun syncToCloud() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSyncing = true, error = null) }
@@ -332,23 +242,5 @@ class DocumentEditorViewModel @Inject constructor(
 
     private fun toggleVersionSelector() {
         _uiState.update { it.copy(showVersionSelector = !it.showVersionSelector) }
-    }
-
-    private fun toggleSectionEditor() {
-        _uiState.update { 
-            it.copy(
-                showSectionEditor = !it.showSectionEditor,
-                selectedSectionId = if (!it.showSectionEditor) null else it.selectedSectionId
-            )
-        }
-    }
-
-    private fun selectSection(sectionId: String?) {
-        _uiState.update { 
-            it.copy(
-                selectedSectionId = sectionId,
-                showSectionEditor = sectionId != null
-            )
-        }
     }
 } 

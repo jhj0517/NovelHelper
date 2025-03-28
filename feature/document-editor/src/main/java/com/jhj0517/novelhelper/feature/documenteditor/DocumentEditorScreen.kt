@@ -12,24 +12,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -70,7 +59,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jhj0517.novelhelper.core.model.Branch
-import com.jhj0517.novelhelper.core.model.Section
 import com.jhj0517.novelhelper.core.model.Version
 import kotlinx.coroutines.launch
 
@@ -141,34 +129,10 @@ fun DocumentEditorScreen(
                             viewModel.handleAction(DocumentEditorAction.SelectVersion(versionId))
                         }
                     )
-                    
-                    // Sync button
-//                    IconButton(
-//                        onClick = { viewModel.handleAction(DocumentEditorAction.SyncToCloud) },
-//                        enabled = !uiState.isSyncing
-//                    ) {
-//                        if (uiState.isSyncing) {
-//                            CircularProgressIndicator(
-//                                modifier = Modifier.size(24.dp),
-//                                strokeWidth = 2.dp
-//                            )
-//                        } else {
-//                            Icon(Icons.Default.U, contentDescription = "Sync to Cloud")
-//                        }
-//                    }
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            if (!uiState.isLoading && uiState.currentVersion != null) {
-                FloatingActionButton(
-                    onClick = { viewModel.handleAction(DocumentEditorAction.ToggleSectionEditor) }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Section")
-                }
-            }
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -187,21 +151,6 @@ fun DocumentEditorScreen(
                     },
                     onSaveVersion = { title, content ->
                         viewModel.handleAction(DocumentEditorAction.SaveVersion(title, content))
-                    },
-                    onAddSection = { title, content ->
-                        viewModel.handleAction(DocumentEditorAction.AddSection(title, content))
-                    },
-                    onUpdateSection = { id, title, content ->
-                        viewModel.handleAction(DocumentEditorAction.UpdateSection(id, title, content))
-                    },
-                    onDeleteSection = { id ->
-                        viewModel.handleAction(DocumentEditorAction.DeleteSection(id))
-                    },
-                    onSelectSection = { id ->
-                        viewModel.handleAction(DocumentEditorAction.SelectSection(id))
-                    },
-                    onReorderSections = { sectionIds ->
-                        viewModel.handleAction(DocumentEditorAction.ReorderSections(sectionIds))
                     }
                 )
             }
@@ -209,26 +158,6 @@ fun DocumentEditorScreen(
             // Show sync progress if syncing
             if (uiState.isSyncing && uiState.syncProgress != null) {
                 SyncProgressOverlay(uiState.syncProgress!!)
-            }
-            
-            // Show section editor if needed
-            if (uiState.showSectionEditor) {
-                SectionEditorDialog(
-                    section = uiState.sections.find { it.id == uiState.selectedSectionId },
-                    onDismiss = { viewModel.handleAction(DocumentEditorAction.ToggleSectionEditor) },
-                    onSave = { id, title, content ->
-                        if (id == null) {
-                            viewModel.handleAction(DocumentEditorAction.AddSection(title, content))
-                        } else {
-                            viewModel.handleAction(DocumentEditorAction.UpdateSection(id, title, content))
-                        }
-                    },
-                    onDelete = { id ->
-                        if (id != null) {
-                            viewModel.handleAction(DocumentEditorAction.DeleteSection(id))
-                        }
-                    }
-                )
             }
         }
     }
@@ -262,25 +191,9 @@ private fun ErrorMessage(message: String) {
 private fun DocumentContent(
     uiState: DocumentEditorState,
     onUpdateContent: (String) -> Unit,
-    onSaveVersion: (String, String) -> Unit,
-    onAddSection: (String, String) -> Unit,
-    onUpdateSection: (String, String, String) -> Unit,
-    onDeleteSection: (String) -> Unit,
-    onSelectSection: (String) -> Unit,
-    onReorderSections: (List<String>) -> Unit
+    onSaveVersion: (String, String) -> Unit
 ) {
-    val currentVersion = uiState.currentVersion
-    val sections = uiState.sections
-    
-    if (currentVersion == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("No version available. Create a new version.")
-        }
-        return
-    }
+    val currentVersion = uiState.currentVersion ?: return
     
     Column(
         modifier = Modifier
@@ -319,69 +232,15 @@ private fun DocumentContent(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Sections
-        if (sections.isEmpty()) {
-            // If no sections, show a simple editor for the whole document
-            var content by remember(currentVersion.id) { mutableStateOf(currentVersion.content) }
-            
-            OutlinedTextField(
-                value = content,
-                onValueChange = { 
-                    content = it
-                    onUpdateContent(it)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                label = { Text("Document Content") }
-            )
-        } else {
-            // If there are sections, show them in a list
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                items(sections.sortedBy { it.order }) { section ->
-                    SectionItem(
-                        section = section,
-                        onSelect = { onSelectSection(section.id) }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionItem(
-    section: Section,
-    onSelect: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSelect() }
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = section.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = section.content,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        // Document content
+        OutlinedTextField(
+            value = currentVersion.content,
+            onValueChange = onUpdateContent,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            label = { Text("Document Content") }
+        )
     }
 }
 
@@ -511,83 +370,6 @@ private fun CreateBranchDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun SectionEditorDialog(
-    section: Section?,
-    onDismiss: () -> Unit,
-    onSave: (String?, String, String) -> Unit,
-    onDelete: (String?) -> Unit
-) {
-    var title by remember(section) { mutableStateOf(section?.title ?: "") }
-    var content by remember(section) { mutableStateOf(section?.content ?: "") }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (section == null) "Add Section" else "Edit Section") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            ) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Section Title") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    label = { Text("Section Content") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { 
-                    if (title.isNotBlank()) {
-                        onSave(section?.id, title, content)
-                    }
-                },
-                enabled = title.isNotBlank()
-            ) {
-                Icon(Icons.Default.Check, contentDescription = "Save")
-                Spacer(modifier = Modifier.size(4.dp))
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            Row {
-                if (section != null) {
-                    TextButton(
-                        onClick = { onDelete(section.id) },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
-                        Spacer(modifier = Modifier.size(4.dp))
-                        Text("Delete")
-                    }
-                    
-                    Spacer(modifier = Modifier.size(8.dp))
-                }
-                
-                TextButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Cancel")
-                    Spacer(modifier = Modifier.size(4.dp))
-                    Text("Cancel")
-                }
             }
         }
     )

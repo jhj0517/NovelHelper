@@ -2,7 +2,6 @@ package com.jhj0517.novelhelper.feature.documenteditor
 
 import com.jhj0517.novelhelper.core.model.Branch
 import com.jhj0517.novelhelper.core.model.Document
-import com.jhj0517.novelhelper.core.model.Section
 import com.jhj0517.novelhelper.core.model.Version
 
 /**
@@ -13,15 +12,12 @@ data class DocumentEditorState(
     val document: Document? = null,
     val currentBranch: Branch? = null,
     val currentVersion: Version? = null,
-    val sections: List<Section> = emptyList(),
     val error: String? = null,
     val isSaving: Boolean = false,
     val isSyncing: Boolean = false,
     val syncProgress: SyncProgress? = null,
     val showBranchSelector: Boolean = false,
-    val showVersionSelector: Boolean = false,
-    val showSectionEditor: Boolean = false,
-    val selectedSectionId: String? = null
+    val showVersionSelector: Boolean = false
 )
 
 /**
@@ -44,13 +40,7 @@ sealed class DocumentEditorAction {
     data class UpdateContent(val content: String) : DocumentEditorAction()
     data class SaveVersion(val title: String, val content: String) : DocumentEditorAction()
     data class CreateBranch(val name: String, val fromVersionId: String) : DocumentEditorAction()
-    data class AddSection(val title: String, val content: String) : DocumentEditorAction()
-    data class UpdateSection(val sectionId: String, val title: String, val content: String) : DocumentEditorAction()
-    data class DeleteSection(val sectionId: String) : DocumentEditorAction()
-    data class ReorderSections(val sectionIds: List<String>) : DocumentEditorAction()
     object SyncToCloud : DocumentEditorAction()
     object ToggleBranchSelector : DocumentEditorAction()
     object ToggleVersionSelector : DocumentEditorAction()
-    object ToggleSectionEditor : DocumentEditorAction()
-    data class SelectSection(val sectionId: String?) : DocumentEditorAction()
 } 
