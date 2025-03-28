@@ -12,7 +12,7 @@ navigationRuntimeAndroid = "2.9.0-alpha08"
 
 # SDK versions
 compileSdk = "35"
-minSdk = "24"
+minSdk = "26"
 targetSdk = "35"
 
 # Added versions
