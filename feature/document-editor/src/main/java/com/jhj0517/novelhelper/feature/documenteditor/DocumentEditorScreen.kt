@@ -18,17 +18,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,7 +35,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -54,12 +50,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jhj0517.novelhelper.core.model.Branch
-import com.jhj0517.novelhelper.core.model.Version
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,20 +107,8 @@ fun DocumentEditorScreen(
                         onSelectBranch = { branchId ->
                             viewModel.handleAction(DocumentEditorAction.SelectBranch(branchId))
                         },
-                        onCreateBranch = { name, fromVersionId ->
-                            viewModel.handleAction(DocumentEditorAction.CreateBranch(name, fromVersionId))
-                        }
-                    )
-                    
-                    // Version selector
-                    VersionSelector(
-                        currentVersion = uiState.currentVersion,
-                        showSelector = uiState.showVersionSelector,
-                        onToggleSelector = {
-                            viewModel.handleAction(DocumentEditorAction.ToggleVersionSelector)
-                        },
-                        onSelectVersion = { versionId ->
-                            viewModel.handleAction(DocumentEditorAction.SelectVersion(versionId))
+                        onCreateBranch = { name ->
+                            viewModel.handleAction(DocumentEditorAction.CreateBranch(name))
                         }
                     )
                 }
@@ -146,11 +128,8 @@ fun DocumentEditorScreen(
             } else {
                 DocumentContent(
                     uiState = uiState,
-                    onUpdateContent = { content ->
-                        viewModel.handleAction(DocumentEditorAction.UpdateContent(content))
-                    },
-                    onSaveVersion = { title, content ->
-                        viewModel.handleAction(DocumentEditorAction.SaveVersion(title, content))
+                    onUpdateContent = { newContent ->
+                        viewModel.handleAction(DocumentEditorAction.UpdateContent(newContent))
                     }
                 )
             }
@@ -190,51 +169,24 @@ private fun ErrorMessage(message: String) {
 @Composable
 private fun DocumentContent(
     uiState: DocumentEditorState,
-    onUpdateContent: (String) -> Unit,
-    onSaveVersion: (String, String) -> Unit
+    onUpdateContent: (String) -> Unit
 ) {
-    val currentVersion = uiState.currentVersion ?: return
-    
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Version title and save button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Version: ${currentVersion.title}",
-                style = MaterialTheme.typography.titleMedium
-            )
-            
-            Button(
-                onClick = { 
-                    onSaveVersion(currentVersion.title, currentVersion.content)
-                },
-                enabled = !uiState.isSaving
-            ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Save")
-                }
-                Spacer(modifier = Modifier.size(4.dp))
-                Text("Save")
-            }
-        }
+        // Branch info
+        Text(
+            text = "Current Branch: ${uiState.currentBranch?.name ?: "No branch selected"}",
+            style = MaterialTheme.typography.titleMedium
+        )
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Document content
+        // Document content editor
         OutlinedTextField(
-            value = currentVersion.content,
+            value = uiState.content,
             onValueChange = onUpdateContent,
             modifier = Modifier
                 .fillMaxWidth()
@@ -250,7 +202,7 @@ private fun BranchSelector(
     showSelector: Boolean,
     onToggleSelector: () -> Unit,
     onSelectBranch: (String) -> Unit,
-    onCreateBranch: (String, String) -> Unit
+    onCreateBranch: (String) -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     
@@ -292,8 +244,8 @@ private fun BranchSelector(
     if (showCreateDialog) {
         CreateBranchDialog(
             onDismiss = { showCreateDialog = false },
-            onCreateBranch = { name, fromVersionId ->
-                onCreateBranch(name, fromVersionId)
+            onCreateBranch = { name ->
+                onCreateBranch(name)
                 showCreateDialog = false
             }
         )
@@ -301,43 +253,9 @@ private fun BranchSelector(
 }
 
 @Composable
-private fun VersionSelector(
-    currentVersion: Version?,
-    showSelector: Boolean,
-    onToggleSelector: () -> Unit,
-    onSelectVersion: (String) -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable { onToggleSelector() }
-    ) {
-        Text(
-            text = currentVersion?.title ?: "Select Version",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Version")
-        
-        DropdownMenu(
-            expanded = showSelector,
-            onDismissRequest = onToggleSelector
-        ) {
-            // TODO: Get versions from repository and show them here
-            // For now, just show a placeholder
-            DropdownMenuItem(
-                text = { Text("Latest Version") },
-                onClick = { 
-                    // onSelectVersion("latest-version-id")
-                    onToggleSelector()
-                }
-            )
-        }
-    }
-}
-
-@Composable
 private fun CreateBranchDialog(
     onDismiss: () -> Unit,
-    onCreateBranch: (String, String) -> Unit
+    onCreateBranch: (String) -> Unit
 ) {
     var branchName by remember { mutableStateOf("") }
     
@@ -358,8 +276,7 @@ private fun CreateBranchDialog(
             Button(
                 onClick = { 
                     if (branchName.isNotBlank()) {
-                        // For now, we'll use a placeholder version ID
-                        onCreateBranch(branchName, "current-version-id")
+                        onCreateBranch(branchName)
                     }
                 },
                 enabled = branchName.isNotBlank()
