@@ -12,34 +12,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,7 +35,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -65,13 +50,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jhj0517.novelhelper.core.model.Branch
-import com.jhj0517.novelhelper.core.model.Section
-import com.jhj0517.novelhelper.core.model.Version
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,55 +102,25 @@ fun DocumentEditorScreen(
                         currentBranch = uiState.currentBranch,
                         showSelector = uiState.showBranchSelector,
                         onToggleSelector = {
+                            // Load branches when toggling the selector
+                            if (!uiState.showBranchSelector) {
+                                viewModel.handleAction(DocumentEditorAction.LoadBranches)
+                            }
                             viewModel.handleAction(DocumentEditorAction.ToggleBranchSelector)
                         },
                         onSelectBranch = { branchId ->
                             viewModel.handleAction(DocumentEditorAction.SelectBranch(branchId))
                         },
-                        onCreateBranch = { name, fromVersionId ->
-                            viewModel.handleAction(DocumentEditorAction.CreateBranch(name, fromVersionId))
-                        }
-                    )
-                    
-                    // Version selector
-                    VersionSelector(
-                        currentVersion = uiState.currentVersion,
-                        showSelector = uiState.showVersionSelector,
-                        onToggleSelector = {
-                            viewModel.handleAction(DocumentEditorAction.ToggleVersionSelector)
+                        onCreateBranch = { name ->
+                            viewModel.handleAction(DocumentEditorAction.CreateBranch(name))
                         },
-                        onSelectVersion = { versionId ->
-                            viewModel.handleAction(DocumentEditorAction.SelectVersion(versionId))
-                        }
+                        branches = uiState.branches,
+                        isLoading = uiState.isLoading
                     )
-                    
-                    // Sync button
-//                    IconButton(
-//                        onClick = { viewModel.handleAction(DocumentEditorAction.SyncToCloud) },
-//                        enabled = !uiState.isSyncing
-//                    ) {
-//                        if (uiState.isSyncing) {
-//                            CircularProgressIndicator(
-//                                modifier = Modifier.size(24.dp),
-//                                strokeWidth = 2.dp
-//                            )
-//                        } else {
-//                            Icon(Icons.Default.U, contentDescription = "Sync to Cloud")
-//                        }
-//                    }
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            if (!uiState.isLoading && uiState.currentVersion != null) {
-                FloatingActionButton(
-                    onClick = { viewModel.handleAction(DocumentEditorAction.ToggleSectionEditor) }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Section")
-                }
-            }
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -182,26 +134,8 @@ fun DocumentEditorScreen(
             } else {
                 DocumentContent(
                     uiState = uiState,
-                    onUpdateContent = { content ->
-                        viewModel.handleAction(DocumentEditorAction.UpdateContent(content))
-                    },
-                    onSaveVersion = { title, content ->
-                        viewModel.handleAction(DocumentEditorAction.SaveVersion(title, content))
-                    },
-                    onAddSection = { title, content ->
-                        viewModel.handleAction(DocumentEditorAction.AddSection(title, content))
-                    },
-                    onUpdateSection = { id, title, content ->
-                        viewModel.handleAction(DocumentEditorAction.UpdateSection(id, title, content))
-                    },
-                    onDeleteSection = { id ->
-                        viewModel.handleAction(DocumentEditorAction.DeleteSection(id))
-                    },
-                    onSelectSection = { id ->
-                        viewModel.handleAction(DocumentEditorAction.SelectSection(id))
-                    },
-                    onReorderSections = { sectionIds ->
-                        viewModel.handleAction(DocumentEditorAction.ReorderSections(sectionIds))
+                    onUpdateContent = { newContent ->
+                        viewModel.handleAction(DocumentEditorAction.UpdateContent(newContent))
                     }
                 )
             }
@@ -209,26 +143,6 @@ fun DocumentEditorScreen(
             // Show sync progress if syncing
             if (uiState.isSyncing && uiState.syncProgress != null) {
                 SyncProgressOverlay(uiState.syncProgress!!)
-            }
-            
-            // Show section editor if needed
-            if (uiState.showSectionEditor) {
-                SectionEditorDialog(
-                    section = uiState.sections.find { it.id == uiState.selectedSectionId },
-                    onDismiss = { viewModel.handleAction(DocumentEditorAction.ToggleSectionEditor) },
-                    onSave = { id, title, content ->
-                        if (id == null) {
-                            viewModel.handleAction(DocumentEditorAction.AddSection(title, content))
-                        } else {
-                            viewModel.handleAction(DocumentEditorAction.UpdateSection(id, title, content))
-                        }
-                    },
-                    onDelete = { id ->
-                        if (id != null) {
-                            viewModel.handleAction(DocumentEditorAction.DeleteSection(id))
-                        }
-                    }
-                )
             }
         }
     }
@@ -261,127 +175,30 @@ private fun ErrorMessage(message: String) {
 @Composable
 private fun DocumentContent(
     uiState: DocumentEditorState,
-    onUpdateContent: (String) -> Unit,
-    onSaveVersion: (String, String) -> Unit,
-    onAddSection: (String, String) -> Unit,
-    onUpdateSection: (String, String, String) -> Unit,
-    onDeleteSection: (String) -> Unit,
-    onSelectSection: (String) -> Unit,
-    onReorderSections: (List<String>) -> Unit
+    onUpdateContent: (String) -> Unit
 ) {
-    val currentVersion = uiState.currentVersion
-    val sections = uiState.sections
-    
-    if (currentVersion == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("No version available. Create a new version.")
-        }
-        return
-    }
-    
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Version title and save button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Version: ${currentVersion.title}",
-                style = MaterialTheme.typography.titleMedium
-            )
-            
-            Button(
-                onClick = { 
-                    onSaveVersion(currentVersion.title, currentVersion.content)
-                },
-                enabled = !uiState.isSaving
-            ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Save")
-                }
-                Spacer(modifier = Modifier.size(4.dp))
-                Text("Save")
-            }
-        }
+        // Branch info
+        Text(
+            text = "Current Branch: ${uiState.currentBranch?.name ?: "No branch selected"}",
+            style = MaterialTheme.typography.titleMedium
+        )
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Sections
-        if (sections.isEmpty()) {
-            // If no sections, show a simple editor for the whole document
-            var content by remember(currentVersion.id) { mutableStateOf(currentVersion.content) }
-            
-            OutlinedTextField(
-                value = content,
-                onValueChange = { 
-                    content = it
-                    onUpdateContent(it)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                label = { Text("Document Content") }
-            )
-        } else {
-            // If there are sections, show them in a list
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                items(sections.sortedBy { it.order }) { section ->
-                    SectionItem(
-                        section = section,
-                        onSelect = { onSelectSection(section.id) }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionItem(
-    section: Section,
-    onSelect: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSelect() }
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = section.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = section.content,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        // Document content editor
+        OutlinedTextField(
+            value = uiState.content,
+            onValueChange = onUpdateContent,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            label = { Text("Document Content") }
+        )
     }
 }
 
@@ -391,7 +208,9 @@ private fun BranchSelector(
     showSelector: Boolean,
     onToggleSelector: () -> Unit,
     onSelectBranch: (String) -> Unit,
-    onCreateBranch: (String, String) -> Unit
+    onCreateBranch: (String) -> Unit,
+    branches: List<Branch> = emptyList(),
+    isLoading: Boolean = false
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     
@@ -409,16 +228,39 @@ private fun BranchSelector(
             expanded = showSelector,
             onDismissRequest = onToggleSelector
         ) {
-            // For now, just show a placeholder
-            DropdownMenuItem(
-                text = { Text("Main Branch") },
-                onClick = { 
-                    // onSelectBranch("main-branch-id")
-                    onToggleSelector()
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
-            )
-
-            HorizontalDivider()
+            } else if (branches.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text("No branches available") },
+                    onClick = { }
+                )
+            } else {
+                // Show available branches
+                branches.forEach { branch ->
+                    DropdownMenuItem(
+                        text = { Text(branch.name) },
+                        onClick = { 
+                            onSelectBranch(branch.id)
+                            onToggleSelector()
+                        }
+                    )
+                }
+            }
+            
+            if (!isLoading && branches.isNotEmpty()) {
+                HorizontalDivider()
+            }
             
             DropdownMenuItem(
                 text = { Text("Create New Branch") },
@@ -433,8 +275,8 @@ private fun BranchSelector(
     if (showCreateDialog) {
         CreateBranchDialog(
             onDismiss = { showCreateDialog = false },
-            onCreateBranch = { name, fromVersionId ->
-                onCreateBranch(name, fromVersionId)
+            onCreateBranch = { name ->
+                onCreateBranch(name)
                 showCreateDialog = false
             }
         )
@@ -442,45 +284,12 @@ private fun BranchSelector(
 }
 
 @Composable
-private fun VersionSelector(
-    currentVersion: Version?,
-    showSelector: Boolean,
-    onToggleSelector: () -> Unit,
-    onSelectVersion: (String) -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable { onToggleSelector() }
-    ) {
-        Text(
-            text = currentVersion?.title ?: "Select Version",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Version")
-        
-        DropdownMenu(
-            expanded = showSelector,
-            onDismissRequest = onToggleSelector
-        ) {
-            // TODO: Get versions from repository and show them here
-            // For now, just show a placeholder
-            DropdownMenuItem(
-                text = { Text("Latest Version") },
-                onClick = { 
-                    // onSelectVersion("latest-version-id")
-                    onToggleSelector()
-                }
-            )
-        }
-    }
-}
-
-@Composable
 private fun CreateBranchDialog(
     onDismiss: () -> Unit,
-    onCreateBranch: (String, String) -> Unit
+    onCreateBranch: (String) -> Unit
 ) {
     var branchName by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -489,18 +298,38 @@ private fun CreateBranchDialog(
             Column {
                 OutlinedTextField(
                     value = branchName,
-                    onValueChange = { branchName = it },
+                    onValueChange = { 
+                        branchName = it 
+                        errorMessage = ""
+                    },
                     label = { Text("Branch Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorMessage.isNotEmpty(),
+                    supportingText = {
+                        if (errorMessage.isNotEmpty()) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "This will create a new branch with the current content.",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = { 
-                    if (branchName.isNotBlank()) {
-                        // For now, we'll use a placeholder version ID
-                        onCreateBranch(branchName, "current-version-id")
+                    if (branchName.isBlank()) {
+                        errorMessage = "Branch name cannot be empty"
+                    } else {
+                        onCreateBranch(branchName)
                     }
                 },
                 enabled = branchName.isNotBlank()
@@ -511,83 +340,6 @@ private fun CreateBranchDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun SectionEditorDialog(
-    section: Section?,
-    onDismiss: () -> Unit,
-    onSave: (String?, String, String) -> Unit,
-    onDelete: (String?) -> Unit
-) {
-    var title by remember(section) { mutableStateOf(section?.title ?: "") }
-    var content by remember(section) { mutableStateOf(section?.content ?: "") }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (section == null) "Add Section" else "Edit Section") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            ) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Section Title") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    label = { Text("Section Content") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { 
-                    if (title.isNotBlank()) {
-                        onSave(section?.id, title, content)
-                    }
-                },
-                enabled = title.isNotBlank()
-            ) {
-                Icon(Icons.Default.Check, contentDescription = "Save")
-                Spacer(modifier = Modifier.size(4.dp))
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            Row {
-                if (section != null) {
-                    TextButton(
-                        onClick = { onDelete(section.id) },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
-                        Spacer(modifier = Modifier.size(4.dp))
-                        Text("Delete")
-                    }
-                    
-                    Spacer(modifier = Modifier.size(8.dp))
-                }
-                
-                TextButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Cancel")
-                    Spacer(modifier = Modifier.size(4.dp))
-                    Text("Cancel")
-                }
             }
         }
     )
