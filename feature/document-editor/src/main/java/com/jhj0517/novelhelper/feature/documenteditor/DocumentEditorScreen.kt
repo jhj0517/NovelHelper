@@ -102,6 +102,10 @@ fun DocumentEditorScreen(
                         currentBranch = uiState.currentBranch,
                         showSelector = uiState.showBranchSelector,
                         onToggleSelector = {
+                            // Load branches when toggling the selector
+                            if (!uiState.showBranchSelector) {
+                                viewModel.handleAction(DocumentEditorAction.LoadBranches)
+                            }
                             viewModel.handleAction(DocumentEditorAction.ToggleBranchSelector)
                         },
                         onSelectBranch = { branchId ->
@@ -109,7 +113,9 @@ fun DocumentEditorScreen(
                         },
                         onCreateBranch = { name ->
                             viewModel.handleAction(DocumentEditorAction.CreateBranch(name))
-                        }
+                        },
+                        branches = uiState.branches,
+                        isLoading = uiState.isLoading
                     )
                 }
             )
@@ -202,7 +208,9 @@ private fun BranchSelector(
     showSelector: Boolean,
     onToggleSelector: () -> Unit,
     onSelectBranch: (String) -> Unit,
-    onCreateBranch: (String) -> Unit
+    onCreateBranch: (String) -> Unit,
+    branches: List<Branch> = emptyList(),
+    isLoading: Boolean = false
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     
@@ -220,16 +228,39 @@ private fun BranchSelector(
             expanded = showSelector,
             onDismissRequest = onToggleSelector
         ) {
-            // For now, just show a placeholder
-            DropdownMenuItem(
-                text = { Text("Main Branch") },
-                onClick = { 
-                    // onSelectBranch("main-branch-id")
-                    onToggleSelector()
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
-            )
-
-            HorizontalDivider()
+            } else if (branches.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text("No branches available") },
+                    onClick = { }
+                )
+            } else {
+                // Show available branches
+                branches.forEach { branch ->
+                    DropdownMenuItem(
+                        text = { Text(branch.name) },
+                        onClick = { 
+                            onSelectBranch(branch.id)
+                            onToggleSelector()
+                        }
+                    )
+                }
+            }
+            
+            if (!isLoading && branches.isNotEmpty()) {
+                HorizontalDivider()
+            }
             
             DropdownMenuItem(
                 text = { Text("Create New Branch") },
@@ -258,6 +289,7 @@ private fun CreateBranchDialog(
     onCreateBranch: (String) -> Unit
 ) {
     var branchName by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -266,16 +298,37 @@ private fun CreateBranchDialog(
             Column {
                 OutlinedTextField(
                     value = branchName,
-                    onValueChange = { branchName = it },
+                    onValueChange = { 
+                        branchName = it 
+                        errorMessage = ""
+                    },
                     label = { Text("Branch Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorMessage.isNotEmpty(),
+                    supportingText = {
+                        if (errorMessage.isNotEmpty()) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "This will create a new branch with the current content.",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = { 
-                    if (branchName.isNotBlank()) {
+                    if (branchName.isBlank()) {
+                        errorMessage = "Branch name cannot be empty"
+                    } else {
                         onCreateBranch(branchName)
                     }
                 },
