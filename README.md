@@ -15,6 +15,8 @@ NovelHelper
 ├── 📁 feature                       // Feature modules
 │   ├── 📁 document-editor           // Document editing screen feature
 │   └── 📁 document-selection        // Document selection screen feature
+├── 📁 gradle                        // Build dependencies
+│   └── libs.versions.toml           // Version catalog
 ```
 
 ## WIP
