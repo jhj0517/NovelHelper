@@ -30,6 +30,7 @@ class DocumentEditorViewModel @Inject constructor(
             is DocumentEditorAction.UpdateContent -> updateContent(action.content)
             is DocumentEditorAction.SyncToCloud -> syncToCloud()
             is DocumentEditorAction.ToggleBranchSelector -> toggleBranchSelector()
+            is DocumentEditorAction.LoadBranches -> loadBranches()
         }
     }
 
@@ -40,6 +41,9 @@ class DocumentEditorViewModel @Inject constructor(
             try {
                 val document = documentRepository.getDocumentById(documentId)
                 if (document != null) {
+                    // Set up a collector for branches
+                    setupBranchesCollector(documentId)
+                    
                     // Get the main branch
                     val mainBranch = documentRepository.getMainBranchForDocument(documentId)
                     
@@ -55,6 +59,34 @@ class DocumentEditorViewModel @Inject constructor(
                     _uiState.update { it.copy(document = document, isLoading = false) }
                 } else {
                     _uiState.update { it.copy(error = "Document not found", isLoading = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message, isLoading = false) }
+            }
+        }
+    }
+
+    private fun setupBranchesCollector(documentId: String) {
+        viewModelScope.launch {
+            documentRepository.getBranchesByDocumentIdFlow(documentId).collectLatest { branches ->
+                _uiState.update { it.copy(branches = branches) }
+            }
+        }
+    }
+
+    private fun loadBranches() {
+        val documentId = _uiState.value.document?.id ?: return
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                documentRepository.getBranchesByDocumentIdFlow(documentId).collectLatest { branches ->
+                    _uiState.update { 
+                        it.copy(
+                            branches = branches,
+                            isLoading = false
+                        ) 
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message, isLoading = false) }
@@ -92,6 +124,7 @@ class DocumentEditorViewModel @Inject constructor(
 
     private fun createBranch(name: String) {
         val document = _uiState.value.document ?: return
+        val currentContent = _uiState.value.content
         
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -100,8 +133,14 @@ class DocumentEditorViewModel @Inject constructor(
                 // Create new branch
                 val branchId = documentRepository.createBranch(document.id, name)
                 
+                // Create an initial version with the current content
+                documentRepository.createVersion(branchId, currentContent, "Initial Version")
+                
                 // Select the new branch
                 selectBranch(branchId)
+                
+                // Explicitly load branches (though our collector should handle this)
+                loadBranches()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message, isLoading = false) }
             }
