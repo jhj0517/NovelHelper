@@ -10,6 +10,7 @@ data class DocumentEditorState(
     val isLoading: Boolean = true,
     val document: Document? = null,
     val currentBranch: Branch? = null,
+    val branches: List<Branch> = emptyList(),
     val content: String = "",
     val error: String? = null,
     val isSaving: Boolean = false,
@@ -38,4 +39,5 @@ sealed class DocumentEditorAction {
     data class UpdateContent(val content: String) : DocumentEditorAction()
     object SyncToCloud : DocumentEditorAction()
     object ToggleBranchSelector : DocumentEditorAction()
+    object LoadBranches : DocumentEditorAction()
 } 
