@@ -1,5 +1,6 @@
 package com.jhj0517.novelhelper.feature.documenteditor
 
+import com.jhj0517.novelhelper.core.data.repository.SyncProgress
 import com.jhj0517.novelhelper.core.model.Branch
 import com.jhj0517.novelhelper.core.model.Document
 
@@ -19,15 +20,6 @@ data class DocumentEditorState(
     val showBranchSelector: Boolean = false
 )
 
-/**
- * Represents the progress of a sync operation.
- */
-sealed class SyncProgress {
-    object Started : SyncProgress()
-    data class InProgress(val current: Int, val total: Int) : SyncProgress()
-    data class Completed(val successCount: Int) : SyncProgress()
-    data class Failed(val error: String) : SyncProgress()
-}
 
 /**
  * Represents a user action in the document editor.
