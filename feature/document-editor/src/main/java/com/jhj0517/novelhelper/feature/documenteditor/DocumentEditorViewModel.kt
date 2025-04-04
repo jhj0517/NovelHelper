@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jhj0517.novelhelper.core.data.repository.DocumentRepository
 import com.jhj0517.novelhelper.core.data.repository.DocumentSyncRepository
+import com.jhj0517.novelhelper.core.data.repository.SyncProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -177,15 +178,15 @@ class DocumentEditorViewModel @Inject constructor(
             try {
                 documentSyncRepository.syncToCloud().collectLatest { progress ->
                     val syncProgress = when (progress) {
-                        is com.jhj0517.novelhelper.core.data.repository.SyncProgress.Started -> 
+                        is SyncProgress.Started ->
                             SyncProgress.Started
-                        is com.jhj0517.novelhelper.core.data.repository.SyncProgress.InProgress -> 
+                        is SyncProgress.InProgress ->
                             SyncProgress.InProgress(progress.current, progress.total)
-                        is com.jhj0517.novelhelper.core.data.repository.SyncProgress.Completed -> {
+                        is SyncProgress.Completed -> {
                             _uiState.update { it.copy(isSyncing = false) }
                             SyncProgress.Completed(progress.successCount)
                         }
-                        is com.jhj0517.novelhelper.core.data.repository.SyncProgress.Failed -> {
+                        is SyncProgress.Failed -> {
                             _uiState.update { it.copy(isSyncing = false, error = progress.error) }
                             SyncProgress.Failed(progress.error)
                         }
