@@ -44,6 +44,7 @@ data class BranchEntity(
     val isMainBranch: Boolean
 )
 
+// deprecated
 @Entity(
     tableName = "versions",
     foreignKeys = [
@@ -70,6 +71,7 @@ data class VersionEntity(
     val isSyncedToCloud: Boolean
 )
 
+// deprecated
 @Entity(
     tableName = "sections",
     foreignKeys = [
