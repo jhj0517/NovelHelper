@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.jhj0517.novelhelper.core.data.repository.SyncProgress
 import com.jhj0517.novelhelper.core.model.Branch
 import kotlinx.coroutines.launch
 
