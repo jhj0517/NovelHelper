@@ -53,7 +53,7 @@ class DocumentEditorViewModel @Inject constructor(
                         selectBranch(mainBranch.id)
                     } else {
                         // If no main branch exists, create one
-                        val branchId = documentRepository.createBranch(document.id, "Main Branch", isMainBranch = true)
+                        val branchId = documentRepository.createBranch(document.id, "Main Branch", "", isMainBranch = true)
                         selectBranch(branchId)
                     }
                     
@@ -102,14 +102,10 @@ class DocumentEditorViewModel @Inject constructor(
             try {
                 val branch = documentRepository.getBranchById(branchId)
                 if (branch != null) {
-                    // Get the latest version's content
-                    val latestVersion = documentRepository.getLatestVersionForBranch(branchId)
-                    val content = latestVersion?.content ?: ""
-                    
                     _uiState.update { 
                         it.copy(
                             currentBranch = branch,
-                            content = content,
+                            content = branch.content, // Branch now directly contains content
                             isLoading = false,
                             showBranchSelector = false
                         )
@@ -131,11 +127,8 @@ class DocumentEditorViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
-                // Create new branch
-                val branchId = documentRepository.createBranch(document.id, name)
-                
-                // Create an initial version with the current content
-                documentRepository.createVersion(branchId, currentContent, "Initial Version")
+                // Create new branch with current content
+                val branchId = documentRepository.createBranch(document.id, name, currentContent)
                 
                 // Select the new branch
                 selectBranch(branchId)
@@ -155,8 +148,8 @@ class DocumentEditorViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true, error = null) }
             
             try {
-                // Create a new version with the updated content
-                documentRepository.createVersion(currentBranch.id, content, "Updated Version")
+                // Update branch content
+                documentRepository.updateBranchContent(currentBranch.id, content)
                 
                 // Update the UI state
                 _uiState.update { 

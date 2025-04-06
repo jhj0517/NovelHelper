@@ -28,4 +28,10 @@ interface BranchDao {
 
     @Query("SELECT * FROM branches WHERE documentId = :documentId AND isMainBranch = 1 LIMIT 1")
     suspend fun getMainBranchForDocument(documentId: String): BranchEntity?
+    
+    @Query("SELECT * FROM branches WHERE isSyncedToCloud = 0")
+    suspend fun getUnsyncedBranches(): List<BranchEntity>
+    
+    @Query("UPDATE branches SET isSyncedToCloud = 1 WHERE id = :branchId")
+    suspend fun markBranchSynced(branchId: String)
 } 

@@ -21,100 +21,49 @@ class ContentManager @Inject constructor(
             }
             return dir
         }
-
+    
+    private val branchesDir: File
+        get() {
+            val dir = File(contentDir, "branches")
+            if (!dir.exists()) {
+                dir.mkdirs()
+            }
+            return dir
+        }
+    
     /**
-     * Saves content for a version to a file.
+     * Saves content for a branch to the file system.
      *
-     * @param versionId The ID of the version
+     * @param branchId The ID of the branch
      * @param content The content to save
-     * @return The path to the saved file
+     * @return The path to the file where the content was saved
      */
-    fun saveContentForVersion(versionId: String, content: String): String {
-        val file = File(contentDir, "version_$versionId.txt")
+    fun saveBranchContent(branchId: String, content: String): String {
+        val file = File(branchesDir, "$branchId.txt")
         file.writeText(content)
         return file.absolutePath
     }
-
+    
     /**
-     * Gets the content for a version from a file.
+     * Gets content for a branch from the file system.
      *
-     * @param versionId The ID of the version
-     * @return The content of the version, or an empty string if the file doesn't exist
+     * @param branchId The ID of the branch
+     * @return The content of the branch, or an empty string if the file doesn't exist
      */
-    fun getContentForVersion(versionId: String): String {
-        val file = File(contentDir, "version_$versionId.txt")
+    fun getBranchContent(branchId: String): String {
+        val file = File(branchesDir, "$branchId.txt")
         return if (file.exists()) file.readText() else ""
     }
-
+    
     /**
-     * Saves a diff between two versions to a file.
+     * Deletes content for a branch from the file system.
      *
-     * @param fromVersionId The ID of the source version
-     * @param toVersionId The ID of the target version
-     * @param diff The diff content
-     * @return The path to the saved file
+     * @param branchId The ID of the branch
      */
-    fun saveDiff(fromVersionId: String, toVersionId: String, diff: String): String {
-        val file = File(contentDir, "diff_${fromVersionId}_${toVersionId}.diff")
-        file.writeText(diff)
-        return file.absolutePath
-    }
-
-    /**
-     * Gets the diff between two versions from a file.
-     *
-     * @param fromVersionId The ID of the source version
-     * @param toVersionId The ID of the target version
-     * @return The diff content, or an empty string if the file doesn't exist
-     */
-    fun getDiff(fromVersionId: String, toVersionId: String): String {
-        val file = File(contentDir, "diff_${fromVersionId}_${toVersionId}.diff")
-        return if (file.exists()) file.readText() else ""
-    }
-
-    /**
-     * Saves content for a section to a file.
-     *
-     * @param sectionId The ID of the section
-     * @param content The content to save
-     * @return The path to the saved file
-     */
-    fun saveContentForSection(sectionId: String, content: String): String {
-        val file = File(contentDir, "section_$sectionId.txt")
-        file.writeText(content)
-        return file.absolutePath
-    }
-
-    /**
-     * Gets the content for a section from a file.
-     *
-     * @param sectionId The ID of the section
-     * @return The content of the section, or an empty string if the file doesn't exist
-     */
-    fun getContentForSection(sectionId: String): String {
-        val file = File(contentDir, "section_$sectionId.txt")
-        return if (file.exists()) file.readText() else ""
-    }
-
-    /**
-     * Deletes the content file for a version.
-     *
-     * @param versionId The ID of the version
-     * @return True if the file was deleted, false otherwise
-     */
-    fun deleteVersionContent(versionId: String): Boolean {
-        val file = File(contentDir, "version_$versionId.txt")
-        return file.delete()
-    }
-
-    /**
-     * Deletes the content file for a section.
-     *
-     * @param sectionId The ID of the section
-     * @return True if the file was deleted, false otherwise
-     */
-    fun deleteSectionContent(sectionId: String): Boolean {
-        val file = File(contentDir, "section_$sectionId.txt")
-        return file.delete()
+    fun deleteBranchContent(branchId: String) {
+        val file = File(branchesDir, "$branchId.txt")
+        if (file.exists()) {
+            file.delete()
+        }
     }
 } 
