@@ -1,8 +1,7 @@
 package com.jhj0517.novelhelper.core.data.repository
 
 import android.util.Log
-import com.jhj0517.novelhelper.core.database.dao.VersionDao
-import com.jhj0517.novelhelper.core.database.entity.VersionEntity
+import com.jhj0517.novelhelper.core.database.dao.BranchDao
 import com.jhj0517.novelhelper.core.network.sync.S3SyncManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -14,11 +13,11 @@ import javax.inject.Singleton
  */
 @Singleton
 class DocumentSyncRepository @Inject constructor(
-    private val versionDao: VersionDao,
+    private val branchDao: BranchDao,
     private val s3SyncManager: S3SyncManager
 ) {
     /**
-     * Syncs all unsynced versions to the cloud.
+     * Syncs all unsynced branches to the cloud.
      *
      * @return A flow of sync progress
      */
@@ -26,29 +25,24 @@ class DocumentSyncRepository @Inject constructor(
         emit(SyncProgress.Started)
         
         try {
-            val unsyncedVersions = versionDao.getUnsyncedVersions()
-            val totalVersions = unsyncedVersions.size
+            val unsyncedBranches = branchDao.getUnsyncedBranches()
+            val totalBranches = unsyncedBranches.size
             
-            if (totalVersions == 0) {
+            if (totalBranches == 0) {
                 emit(SyncProgress.Completed(0))
                 return@flow
             }
             
             var successCount = 0
             
-            unsyncedVersions.forEachIndexed { index, version ->
-                emit(SyncProgress.InProgress(index + 1, totalVersions))
+            unsyncedBranches.forEachIndexed { index, branch ->
+                emit(SyncProgress.InProgress(index + 1, totalBranches))
                 
-                // Upload content file
-                val contentSuccess = uploadVersionContent(version)
+                // Upload branch content
+                val contentSuccess = uploadBranchContent(branch.id, branch.contentFilePath)
                 
-                // Upload diff file if it exists
-                val diffSuccess = if (version.diffFilePath != null && version.diffFromVersionId != null) {
-                    uploadVersionDiff(version.diffFromVersionId!!, version.id, version.diffFilePath!!)
-                } else true
-                
-                if (contentSuccess && diffSuccess) {
-                    versionDao.markVersionSynced(version.id)
+                if (contentSuccess) {
+                    branchDao.markBranchSynced(branch.id)
                     successCount++
                 }
             }
@@ -59,33 +53,20 @@ class DocumentSyncRepository @Inject constructor(
             emit(SyncProgress.Failed(e.message ?: "Unknown error"))
         }
     }
-    
+
     /**
-     * Uploads version content to S3.
+     * Uploads branch content to S3.
      *
-     * @param version The version entity
+     * @param branchId The ID of the branch
+     * @param contentFilePath The path to the content file
      * @return True if the upload was successful, false otherwise
      */
-    private suspend fun uploadVersionContent(version: VersionEntity): Boolean {
-        val objectKey = "versions/${version.id}/content.txt"
-        return s3SyncManager.uploadFile(version.contentFilePath, objectKey)
-    }
-    
-    /**
-     * Uploads version diff to S3.
-     *
-     * @param fromVersionId The ID of the source version
-     * @param toVersionId The ID of the target version
-     * @param diffFilePath The path to the diff file
-     * @return True if the upload was successful, false otherwise
-     */
-    private suspend fun uploadVersionDiff(
-        fromVersionId: String,
-        toVersionId: String,
-        diffFilePath: String
+    private suspend fun uploadBranchContent(
+        branchId: String,
+        contentFilePath: String
     ): Boolean {
-        val objectKey = "versions/diffs/${fromVersionId}_${toVersionId}.diff"
-        return s3SyncManager.uploadFile(diffFilePath, objectKey)
+        val objectKey = "branches/content/${branchId}.txt"
+        return s3SyncManager.uploadFile(contentFilePath, objectKey)
     }
     
     companion object {
