@@ -4,8 +4,6 @@ import android.content.Context
 import com.jhj0517.novelhelper.core.database.NovelHelperDatabase
 import com.jhj0517.novelhelper.core.database.dao.BranchDao
 import com.jhj0517.novelhelper.core.database.dao.DocumentDao
-import com.jhj0517.novelhelper.core.database.dao.SectionDao
-import com.jhj0517.novelhelper.core.database.dao.VersionDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,13 +31,4 @@ object DatabaseModule {
         return database.branchDao()
     }
 
-    @Provides
-    fun provideVersionDao(database: NovelHelperDatabase): VersionDao {
-        return database.versionDao()
-    }
-
-    @Provides
-    fun provideSectionDao(database: NovelHelperDatabase): SectionDao {
-        return database.sectionDao()
-    }
 } 

@@ -39,58 +39,10 @@ data class BranchEntity(
     val id: String,
     val documentId: String,
     val name: String,
+    val content: String,
+    val contentFilePath: String,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
-    val isMainBranch: Boolean
-)
-
-// deprecated
-@Entity(
-    tableName = "versions",
-    foreignKeys = [
-        ForeignKey(
-            entity = BranchEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["branchId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [
-        Index("branchId")
-    ]
-)
-data class VersionEntity(
-    @PrimaryKey
-    val id: String,
-    val branchId: String,
-    val title: String,
-    val contentFilePath: String,
-    val diffFromVersionId: String?,
-    val diffFilePath: String?,
-    val createdAt: LocalDateTime,
+    val isMainBranch: Boolean,
     val isSyncedToCloud: Boolean
 )
-
-// deprecated
-@Entity(
-    tableName = "sections",
-    foreignKeys = [
-        ForeignKey(
-            entity = VersionEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["versionId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [
-        Index("versionId")
-    ]
-)
-data class SectionEntity(
-    @PrimaryKey
-    val id: String,
-    val versionId: String,
-    val title: String,
-    val contentFilePath: String,
-    val order: Int
-) 
